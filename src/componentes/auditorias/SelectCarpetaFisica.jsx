@@ -4,16 +4,16 @@ import useExcel from '@/hooks/auditorias/useExcel'; // Asegúrate de que esta ru
 
 const SelectCarpetaFisica = ({ formData, handleInputChange }) => {
   const [carpetas, setCarpetas] = useState([]);
-  const [carpetaLabel, setCarpetaLabel] = useState('');
   const { getCarpetaFisicaName } = useExcel(); // Obtén la función del hook
 
   useEffect(() => {
     const cargarCarpetasFisicas = async () => {
       try {
-        const carpetasData = await getCarpetaFisicaName(); // Llama a la función asíncrona
+        // Llama a la función para obtener los datos de carpetas
+        const carpetasData = await getCarpetaFisicaName(); 
         const carpetasFormatted = carpetasData.map((row) => ({
-          value: row[0], // No de carpeta (Columna A)
-          label: row[1], // Nombre de carpeta (Columna B)
+          value: `${row[0]}_${row[1]}`, // Combina el No. de Carpeta y el Label en un solo valor
+          label: `${row[0]} - ${row[1]}`, // Muestra No. de Carpeta y Label en el dropdown
         }));
         setCarpetas(carpetasFormatted);
       } catch (error) {
@@ -24,14 +24,6 @@ const SelectCarpetaFisica = ({ formData, handleInputChange }) => {
     cargarCarpetasFisicas(); // Ejecuta al montar el componente
   }, [getCarpetaFisicaName]); // Asegúrate de que la función sea una dependencia
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    handleInputChange(e);
-
-    const selectedCarpeta = carpetas.find(opcion => opcion.value === value);
-    setCarpetaLabel(selectedCarpeta ? selectedCarpeta.label : '');
-  };
-
   return (
     <div>
       <Label htmlFor="noCarpetaFisica" value="No. Carpeta Física" />
@@ -39,21 +31,16 @@ const SelectCarpetaFisica = ({ formData, handleInputChange }) => {
         id="noCarpetaFisica"
         name="noCarpetaFisica"
         value={formData.noCarpetaFisica}
-        onChange={handleChange}
+        onChange={handleInputChange}
         required
       >
         <option value="">Seleccione una carpeta</option>
         {carpetas.map((carpeta) => (
           <option key={carpeta.value} value={carpeta.value}>
-            {carpeta.value} - {carpeta.label} {/* Muestra número y nombre */}
+            {carpeta.label}
           </option>
         ))}
       </Select>
-      {carpetaLabel && (
-        <div className="mt-2 p-2 bg-gray-100 rounded text-sm text-gray-700">
-          {carpetaLabel}
-        </div>
-      )}
     </div>
   );
 };

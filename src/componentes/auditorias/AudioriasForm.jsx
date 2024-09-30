@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button, Label, Textarea, Select } from 'flowbite-react';
 import FileUploader from './FileUploader';
 import SelectCarpetaFisica from './SelectCarpetaFisica';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { toast } from 'react-toastify'; // Importamos el toast
+import { toast } from 'react-toastify';
 import useExcel from '@/hooks/auditorias/useExcel';
 import useSharePoint from '@/hooks/auditorias/useSharePoint';
 
 const DocumentoForm = () => {
-  const { submitNewRow, getCarpetaFisicaName } = useExcel();
+  const { submitNewRow } = useExcel();
   const { uploadFileToSharePoint } = useSharePoint();
 
   const [formData, setFormData] = useState({
@@ -28,34 +28,10 @@ const DocumentoForm = () => {
     respaldo: 'pendiente',
   });
 
-  const [carpetas, setCarpetas] = useState([]);
-  const [carpetaLabel, setCarpetaLabel] = useState(''); // Para manejar el nombre de la carpeta física
-
-  useEffect(() => {
-    const cargarCarpetasFisicas = async () => {
-      try {
-        const carpetasData = await getCarpetaFisicaName();
-        const carpetasFormatted = carpetasData.map((row) => ({
-          value: row[0], // No de carpeta (Columna A)
-          label: row[1], // Nombre de carpeta (Columna B)
-        }));
-        setCarpetas(carpetasFormatted);
-      } catch (error) {
-        console.error('Error al cargar las carpetas físicas:', error);
-      }
-    };
-
-    cargarCarpetasFisicas();
-  }, [getCarpetaFisicaName]);
+  const [clearFileName, setClearFileName] = useState(false); // Estado para limpiar el archivo
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    // Si se selecciona una carpeta física, buscamos el label asociado
-    if (name === 'noCarpetaFisica') {
-      const selectedCarpeta = carpetas.find((carpeta) => carpeta.value === value);
-      setCarpetaLabel(selectedCarpeta ? selectedCarpeta.label : ''); // Guardar el nombre de la carpeta
-    }
 
     setFormData((prevState) => ({
       ...prevState,
@@ -66,47 +42,41 @@ const DocumentoForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Mostrar toast de "Cargando..."
     const loadingToastId = toast.loading('Cargando...');
 
-    // Formamos la nueva fila con los datos del formulario y el label de la carpeta
     const newRow = [
-      formData.respaldo,           // Estado del respaldo
-      formData.noOficio,           // Número de oficio
-      formData.seguimientoOficio,  // Seguimiento a oficio
-      formData.noCarpetaFisica,    // Número de la carpeta física
-      carpetaLabel,                // Nombre de la carpeta física
-      formData.auditoria,          // Auditoría
-      formData.emitidoPor,         // Emitido por
-      formData.fechaOficio,        // Fecha de oficio
-      formData.descripcion,        // Descripción
-      formData.fechaArchivo,       // Fecha de archivo
-      formData.capturadoPor,       // Capturado por
-      formData.estado || 'pendiente', // Estado del documento
-      formData.comentario,         // Comentario adicional
-      '',                          // Se reservará para la URL del archivo
+      formData.respaldo,
+      formData.noOficio,
+      formData.seguimientoOficio,
+      formData.noCarpetaFisica,
+      formData.carpetaLabel,
+      formData.auditoria,
+      formData.emitidoPor,
+      formData.fechaOficio,
+      formData.descripcion,
+      formData.fechaArchivo,
+      formData.capturadoPor,
+      formData.estado || 'pendiente',
+      formData.comentario,
+      '',
     ];
 
     try {
       let fileUrl = '';
 
-      // Verifica si hay un archivo para subir
       if (formData.archivo && formData.archivo.name) {
-        const noCarpetaFisica = formData.noCarpetaFisica; 
+        const [noCarpetaFisica, carpetaLabel] = formData.noCarpetaFisica.split('_');
         const auditoria = formData.auditoria;
         const fechaArchivo = formData.fechaArchivo;
         const file = formData.archivo;
 
-        // Sube el archivo a SharePoint y obtén la URL del archivo
         const response = await uploadFileToSharePoint(noCarpetaFisica, carpetaLabel, auditoria, file, fechaArchivo);
         fileUrl = response.webUrl;
-        newRow[newRow.length - 1] = fileUrl; // Asigna la URL del archivo
+        newRow[newRow.length - 1] = fileUrl;
       }
 
-      // Guardar los datos en Excel o donde sea necesario
       await submitNewRow(newRow, 'Archivo2024');
 
-      // Actualiza el toast de "Cargando..." a "Éxito" y lo cierra después de 2 segundos
       toast.update(loadingToastId, {
         render: 'Documento guardado y archivo subido exitosamente!',
         type: 'success',
@@ -114,7 +84,7 @@ const DocumentoForm = () => {
         autoClose: 2000,
       });
 
-      // Reinicia los campos del formulario
+      // Resetea los campos del formulario
       setFormData({
         noOficio: '',
         seguimientoOficio: '',
@@ -130,10 +100,12 @@ const DocumentoForm = () => {
         archivo: null,
         respaldo: 'pendiente',
       });
+
+      // Limpia el nombre del archivo
+      setClearFileName(true); // Activa la limpieza del nombre del archivo
+
     } catch (error) {
       console.error('Error al guardar el documento:', error);
-      
-      // Actualiza el toast de "Cargando..." a "Error" y lo cierra después de 2 segundos
       toast.update(loadingToastId, {
         render: 'Error al guardar el documento.',
         type: 'error',
@@ -183,7 +155,9 @@ const DocumentoForm = () => {
                 className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md text-black"
               />
             </div>
-            <SelectCarpetaFisica formData={formData} handleInputChange={handleInputChange} carpetas={carpetas} />
+
+            <SelectCarpetaFisica formData={formData} handleInputChange={handleInputChange} />
+
             <div>
               <Label htmlFor="auditoria" value="Auditoría" />
               <input
@@ -279,8 +253,10 @@ const DocumentoForm = () => {
             </div>
 
             {/* Componente de carga de archivos */}
-            <FileUploader onFileUpload={(file) => setFormData((prevState) => ({ ...prevState, archivo: file, respaldo: 'respaldado' }))} />
-          </div>
+            <FileUploader
+              onFileUpload={(file) => setFormData((prevState) => ({ ...prevState, archivo: file, respaldo: 'respaldado' }))}
+              clearFileName={clearFileName} // Pasamos la prop para limpiar el nombre del archivo
+            />          </div>
           <div className="flex justify-end">
             <Button type="submit">Guardar Documento</Button>
           </div>

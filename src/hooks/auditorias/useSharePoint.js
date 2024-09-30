@@ -1,11 +1,8 @@
 import { useMsal } from '@azure/msal-react';
 import axios from 'axios';
+import { getSiteId, getDriveId } from '../useGraph'; // Importa las funciones desde el archivo separado
 
 const BASE_GRAPH_URL = 'https://graph.microsoft.com/v1.0';
-
-// Valores fijos
-const siteId = '';
-const driveId = '';
 
 const useSharePoint = () => {
   const { instance } = useMsal();
@@ -32,15 +29,17 @@ const useSharePoint = () => {
   };
 
   // Función para verificar y crear cada nivel de carpetas en "Auditorias/SDIDocumentos"
-  const ensureFolderExists = async (folderPath) => {
+  const ensureFolderExists = async (accessToken, siteId, driveId, baseFolder, folderName) => {
     try {
-      const accessToken = await getAccessToken();
+      // Codificar los segmentos de la ruta para evitar errores
+      const encodedBaseFolder = encodeURIComponent(baseFolder);
+      const encodedFolderName = encodeURIComponent(folderName);
 
-      // Verificar si la carpeta ya existe
-      const folderCheckUrl = `${BASE_GRAPH_URL}/sites/${siteId}/drives/${driveId}/root:/Auditorias/${folderPath}`;
+      const folderPath = `${encodedBaseFolder}/${encodedFolderName}`;
+      const folderCheckUrl = `${BASE_GRAPH_URL}/sites/${siteId}/drives/${driveId}/root:/${folderPath}`;
 
       try {
-        // Intentamos obtener la carpeta para ver si ya existe
+        // Intentar obtener la carpeta
         await axios.get(folderCheckUrl, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -50,14 +49,13 @@ const useSharePoint = () => {
       } catch (error) {
         if (error.response && error.response.status === 404) {
           console.log(`La carpeta ${folderPath} no existe. Creando...`);
+          const folderCreateUrl = `${BASE_GRAPH_URL}/sites/${siteId}/drives/${driveId}/root:/${folderPath}:/children`;
 
-          const folderCreateUrl = `${BASE_GRAPH_URL}/sites/${siteId}/drives/${driveId}/root:/Auditorias/${folderPath}:/children`;
-
-          // Creamos la carpeta con el cuerpo que mencionaste
+          // Crear la carpeta
           await axios.post(
             folderCreateUrl,
             {
-              name: folderPath.split('/').pop(),
+              name: folderName, // No codificar el nombre al crear la carpeta
               folder: {},
               '@microsoft.graph.conflictBehavior': 'replace',
             },
@@ -75,23 +73,30 @@ const useSharePoint = () => {
         }
       }
     } catch (error) {
-      console.error(`Error al verificar o crear la carpeta ${folderPath}:`, error);
+      console.error(`Error al verificar o crear la carpeta ${folderName}:`, error);
       throw error;
     }
   };
 
   // Función para crear la estructura de carpetas
+  // OJOOOOOOOO, HAY UN PROBLEMA CUANDO EN LA LISTA DE LAS CARPETAS SE PONE ESTE CARACTER :, NO DEBE HABER ESE CARACTER AL MOMENTO DE MANDAR EL NOMBRE DE LA CARPETA FISICA
   const createFolderStructure = async (noCarpetaFisica, carpetaLabel, auditoria, year, monthIndex) => {
     const baseFolder = 'SDIDocumentos';
-    const carpetaFisica = `${noCarpetaFisica}_${carpetaLabel}`; // No concatenar la auditoría aquí
+    const carpetaFisica = `${noCarpetaFisica}_${carpetaLabel}`;
     const yearFolder = `${year}`;
     const monthFolder = getMonthName(monthIndex);
-
+    const accessToken = await getAccessToken();
+    const siteId = await getSiteId(accessToken);  // Obtener siteId dinámicamente
+    const driveId = await getDriveId(accessToken, siteId);  // Obtener driveId dinámicamente
     // Verificar y crear cada nivel de carpeta
-    await ensureFolderExists(`${baseFolder}/${carpetaFisica}`); // Crear la carpeta física
-    await ensureFolderExists(`${baseFolder}/${carpetaFisica}/${auditoria}`); // Crear la carpeta de auditoría
-    await ensureFolderExists(`${baseFolder}/${carpetaFisica}/${auditoria}/${yearFolder}`); // Crear la carpeta del año
-    await ensureFolderExists(`${baseFolder}/${carpetaFisica}/${auditoria}/${yearFolder}/${monthFolder}`); // Crear la carpeta del mes
+
+    const encodedCarpetaFisica = encodeURIComponent(carpetaFisica);
+    const encodedAditoria = encodeURIComponent(auditoria)
+
+    await ensureFolderExists(accessToken, siteId, driveId, baseFolder, carpetaFisica); // Crear la carpeta física
+    await ensureFolderExists(accessToken, siteId, driveId, `${baseFolder}/${encodedCarpetaFisica}`, encodedAditoria); // Crear la carpeta de auditoría
+    await ensureFolderExists(accessToken, siteId, driveId, `${baseFolder}/${encodedCarpetaFisica}/${encodedAditoria}`, yearFolder); // Crear la carpeta del año
+    await ensureFolderExists(accessToken, siteId, driveId, `${baseFolder}/${encodedCarpetaFisica}/${encodedAditoria}/${yearFolder}`, monthFolder); // Crear la carpeta del mes
   };
 
   // Función para subir un archivo
@@ -107,13 +112,16 @@ const useSharePoint = () => {
       const year = fechaArchivo.getFullYear();  // Año extraído del formulario
       const monthIndex = fechaArchivo.getMonth();  // Mes extraído del formulario
 
-      // Crear la estructura de carpetas
+      // Crear la estructura de carpetas si no existe
       await createFolderStructure(noCarpetaFisica, carpetaLabel, auditoria, year, monthIndex);
+
+      const siteId = await getSiteId(accessToken);  // Obtener siteId dinámicamente
+      const driveId = await getDriveId(accessToken, siteId);  // Obtener driveId dinámicamente
 
       // Ruta final para subir el archivo
       const folderPath = `SDIDocumentos/${noCarpetaFisica}_${carpetaLabel}/${auditoria}/${year}/${getMonthName(monthIndex)}`;
 
-      // Subir el archivo
+      // Subir el archivo a la ruta en SharePoint
       const uploadUrl = `${BASE_GRAPH_URL}/sites/${siteId}/drives/${driveId}/root:/Auditorias/${folderPath}/${fileName}:/content`;
 
       const response = await axios.put(uploadUrl, file, {
@@ -131,10 +139,12 @@ const useSharePoint = () => {
     }
   };
 
-  // Función para recuperar un archivo de una carpeta
+  // Función para recuperar archivos de una carpeta
   const listFilesInFolder = async (noCarpetaFisica, carpetaLabel, auditoria, year, monthIndex) => {
     try {
       const accessToken = await getAccessToken();
+      const siteId = await getSiteId(accessToken);  // Obtener siteId dinámicamente
+      const driveId = await getDriveId(accessToken, siteId);  // Obtener driveId dinámicamente
 
       const folderPath = `SDIDocumentos/${noCarpetaFisica}_${carpetaLabel}/${auditoria}/${year}/${getMonthName(monthIndex)}`;
       const listUrl = `${BASE_GRAPH_URL}/sites/${siteId}/drives/${driveId}/root:/Auditorias/${folderPath}:/children`;

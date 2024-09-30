@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react'; 
+import React, { useCallback, useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-const FileUploader = ({ onFileUpload }) => {
+const FileUploader = ({ onFileUpload, clearFileName }) => {
   const [fileName, setFileName] = useState(''); // Estado para almacenar el nombre del archivo
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
@@ -23,6 +23,13 @@ const FileUploader = ({ onFileUpload }) => {
       'application/msword': ['.doc'],
     }
   });
+
+  // Limpiar el nombre del archivo si se llama a `clearFileName`
+  useEffect(() => {
+    if (clearFileName) {
+      setFileName(''); // Limpia el nombre del archivo
+    }
+  }, [clearFileName]);
 
   return (
     <div>

@@ -7,11 +7,11 @@ import { MsalProvider } from '@azure/msal-react';
 import { PublicClientApplication } from '@azure/msal-browser';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { msalConfig } from '../services/authConfig';
+import { msalConfig } from '@/services/authConfig';
 import 'flowbite/dist/flowbite.css';
 import './globals.css';
-import Navbar from '../componentes/Navbar';
-import Footer from '../componentes/footer';
+import Navbar from '@/componentes/Navbar';
+import Footer from '@/componentes/Footer';
 
 const msalInstance = new PublicClientApplication(msalConfig);
 
