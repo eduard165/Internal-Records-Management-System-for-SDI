@@ -1,10 +1,15 @@
-import { useMsal } from '@azure/msal-react';
+import { useMsal, InteractionStatus } from '@azure/msal-react';
 import { toast } from 'react-toastify';
 
 export const useAuth = () => {
-  const { instance } = useMsal();
+  const { instance, inProgress } = useMsal();
 
   const handleLogin = async () => {
+    if (inProgress !== InteractionStatus.None) {
+      toast.warning('Ya hay una interacción en progreso. Espera a que termine.');
+      return;
+    }
+
     try {
       // Inicia sesión y obtiene los scopes deseados
       const loginResponse = await instance.loginPopup({
@@ -21,6 +26,11 @@ export const useAuth = () => {
   };
 
   const handleLogout = async () => {
+    if (inProgress !== InteractionStatus.None) {
+      toast.warning('Ya hay una interacción en progreso. Espera a que termine.');
+      return;
+    }
+
     try {
       // Cierra sesión
       await instance.logoutPopup();
@@ -30,7 +40,6 @@ export const useAuth = () => {
       toast.error("Error al cerrar sesión. Por favor, inténtelo de nuevo.");
     }
   };
-
 
   return { handleLogin, handleLogout };
 };
