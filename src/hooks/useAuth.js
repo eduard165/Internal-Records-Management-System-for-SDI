@@ -1,4 +1,5 @@
-import { useMsal, InteractionStatus } from '@azure/msal-react';
+import { useMsal } from '@azure/msal-react';
+import { InteractionStatus } from '@azure/msal-browser';  // Importar desde msal-browser
 import { toast } from 'react-toastify';
 
 export const useAuth = () => {
