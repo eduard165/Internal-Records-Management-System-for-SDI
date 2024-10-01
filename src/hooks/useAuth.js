@@ -1,11 +1,18 @@
 import { useMsal } from '@azure/msal-react';
-import { InteractionStatus } from '@azure/msal-browser';  // Importar desde msal-browser
+import { InteractionStatus, AccountInfo } from '@azure/msal-browser';
 import { toast } from 'react-toastify';
 
 export const useAuth = () => {
-  const { instance, inProgress } = useMsal();
+  const { instance, inProgress, accounts } = useMsal();
 
   const handleLogin = async () => {
+    // Verifica si ya hay una cuenta activa
+    if (accounts && accounts.length > 0) {
+      toast.info('Ya has iniciado sesión.');
+      return;
+    }
+
+    // Verifica si hay otra interacción en progreso
     if (inProgress !== InteractionStatus.None) {
       toast.warning('Ya hay una interacción en progreso. Espera a que termine.');
       return;

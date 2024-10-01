@@ -7,7 +7,6 @@ const ButtonAuth = ({ isAuthenticated, onAuthChange }) => {
 
   const handleAuth = async () => {
     if (isAuthenticated) {
-      await handleLogout();
       onAuthChange(false); // Cambia el estado de autenticación a falso
     } else {
       await handleLogin();
