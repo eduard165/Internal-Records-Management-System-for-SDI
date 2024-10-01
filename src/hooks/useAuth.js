@@ -29,6 +29,9 @@ export const useAuth = () => {
       }
     } catch (error) {
       console.error("Error durante el inicio de sesión:", error);
+      console.log(process.env.NEXT_PUBLIC_AZURE_AD_CLIENT_ID);
+      console.log(process.env.NEXT_PUBLIC_AZURE_AD_AUTHORITY);
+        console.log(process.env.NEXT_PUBLIC_REDIRECT_URI);
       toast.error("Error al iniciar sesión. Por favor, inténtelo de nuevo.");
     }
   };
