@@ -52,10 +52,7 @@ const NavbarComponent = ({ isAuthenticated, onLogout }) => {
         >
           <Dropdown.Item>
             <Link href="/FormAuditorias">Auditoría</Link>
-          </Dropdown.Item>
-          <Dropdown.Item>
-            <Link href="/Proximamente">Otro Formulario</Link>
-          </Dropdown.Item>
+          </Dropdown.Item>   
         </Dropdown>
         <Dropdown
           arrowIcon={false}
@@ -69,9 +66,6 @@ const NavbarComponent = ({ isAuthenticated, onLogout }) => {
         >
           <Dropdown.Item>
             <Link href="/AudiMana">Auditorías</Link>
-          </Dropdown.Item>
-          <Dropdown.Item>
-            <Link href="/Proximamente">Minutario Interno</Link>
           </Dropdown.Item>
         </Dropdown>
       </Navbar.Collapse>
